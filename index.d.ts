@@ -88,7 +88,7 @@ declare namespace OAuthClient {
         clientSecret: string;
         redirectUri?: string;
         environment?: string;
-        token: Token;
+        token?: Token;
         logging: boolean;
     }
 
