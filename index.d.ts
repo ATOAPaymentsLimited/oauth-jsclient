@@ -79,7 +79,7 @@ declare class OAuthClient {
     revoke(params?: OAuthClient.RevokeParams): Promise<AuthResponse>;
     setToken(params: Token.TokenData): Token;
     validateIdToken(params?: OAuthClient.ValidateIdTokenParams): Promise<Response>;
-    validateToken(): void;
+    validateToken(): boolean;
 }
 
 declare namespace OAuthClient {
@@ -125,6 +125,8 @@ declare namespace OAuthClient {
 
     export interface MakeApiCallParams {
         url: string;
+        method?: string;
+        body?: Object;
     }
 
     export interface ValidateIdTokenParams {
