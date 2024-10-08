@@ -52,14 +52,15 @@ implementations which conforms to the specifications.
 
 # Requirements
 
-The Node.js client library is tested against the `Node 8 LTS` and newer versions.
+The Node.js client library is tested against the `Node 10` and newer versions.
 
-To use in node 6, please use
-[intuit-oauth@1.x.](https://github.com/intuit/oauth-jsclient/tree/1.5.0)
+| Version                                                                          | Node support                      |
+|----------------------------------------------------------------------------------|-----------------------------------|
+| [intuit-oauth@1.x.x](https://github.com/intuit/oauth-jsclient/tree/1.5.0)        | Node 6.x or higher                |
+| [intuit-oauth@2.x.x](https://github.com/intuit/oauth-jsclient/tree/2.0.0)        | Node 7.x or higher                |
+| [intuit-oauth@3.x.x](https://github.com/intuit/oauth-jsclient/tree/3.0.2)        | Node 8.x or Node 9.x and higher   |
 
-To use in node 7, please use
-[intuit-oauth@2.x.](https://github.com/intuit/oauth-jsclient/tree/2.0.0). Older node versions are
-not supported.
+**Note**: Older node versions are not supported.
 
 # Installation
 
@@ -93,8 +94,7 @@ Follow the instructions below to use the library :
 - `environment` - environment for the client. Required
   - `sandbox` - for authorizing in sandbox.
   - `production` - for authorizing in production.
-- `redirectUri` - redirectUri on your app to get the `authorizationCode` from Intuit Servers.
-  Required
+- `redirectUri` - redirectUri on your app to get the `authorizationCode` from Intuit Servers. Make sure this redirect URI is also added on your app in the [developer portal](https://developer.intuit.com) on the Keys & OAuth tab. Required
 - `logging` - by default, logging is disabled i.e `false`. To enable provide`true`.
 
 # Usage
@@ -163,7 +163,7 @@ const parseRedirect = req.url;
 oauthClient
   .createToken(parseRedirect)
   .then(function (authResponse) {
-    console.log('The Token is  ' + JSON.stringify(authResponse.getJson()));
+    console.log('The Token is  ' + JSON.stringify(authResponse.json));
   })
   .catch(function (e) {
     console.error('The error message is :' + e.originalMessage);
@@ -215,7 +215,7 @@ previous refresh tokens expire 24 hours after you receive a new one.
 oauthClient
   .refresh()
   .then(function (authResponse) {
-    console.log('Tokens refreshed : ' + JSON.stringify(authResponse.getJson()));
+    console.log('Tokens refreshed : ' + JSON.stringify(authResponse.json));
   })
   .catch(function (e) {
     console.error('The error message is :' + e.originalMessage);
@@ -232,7 +232,7 @@ You can call the below helper method to refresh tokens by explictly passing the 
 oauthClient
   .refreshUsingToken('<Enter the refresh token>')
   .then(function (authResponse) {
-    console.log('Tokens refreshed : ' + JSON.stringify(authResponse.getJson()));
+    console.log('Tokens refreshed : ' + JSON.stringify(authResponse.json));
   })
   .catch(function (e) {
     console.error('The error message is :' + e.originalMessage);
@@ -249,7 +249,7 @@ tokens.
 oauthClient
   .revoke()
   .then(function (authResponse) {
-    console.log('Tokens revoked : ' + JSON.stringify(authResponse.getJson()));
+    console.log('Tokens revoked : ' + JSON.stringify(authResponse.json));
   })
   .catch(function (e) {
     console.error('The error message is :' + e.originalMessage);
@@ -265,7 +265,7 @@ how to retrieve the `token` object
 oauthClient
   .revoke(params)
   .then(function (authResponse) {
-    console.log('Tokens revoked : ' + JSON.stringify(authResponse.getJson()));
+    console.log('Tokens revoked : ' + JSON.stringify(authResponse.json));
   })
   .catch(function (e) {
     console.error('The error message is :' + e.originalMessage);
@@ -440,6 +440,13 @@ oauthClient
 The client validates the ID Token and returns boolean `true` if validates successfully else it would
 throw an exception.
 
+#### Support for PDF format
+In order to save the PDF generated from the APIs properly, the correct transport type should be passed into the `makeAPI()`.Below is an example of the same:
+```
+.makeApiCall({ url: `${url}v3/company/${companyID}/invoice/${invoiceNumber}/pdf?minorversion=59` , headers:{'Content-Type': 'application/pdf','Accept':'application/pdf'}, transport: popsicle.createTransport({type: 'buffer'})})
+```
+The response is an actual buffer( binary BLOB) which could then be saved to the file. 
+
 ### Auth-Response
 
 The response provided by the client is a wrapped response of the below items which is what we call
@@ -502,10 +509,10 @@ You can use the below helper methods to make full use of the Auth Response Objec
 
 ```javascript
 oauthClient.createToken(parseRedirect).then(function (authResponse) {
-  console.log('The Token in JSON is  ' + JSON.stringify(authResponse.getJson()));
+  console.log('The Token in JSON is  ' + JSON.stringify(authResponse.json));
   let status = authResponse.status();
   let body = authResponse.text();
-  let jsonResponse = authResponse.getJson();
+  let jsonResponse = authResponse.json;
   let intuit_tid = authResponse.get_intuit_tid();
 });
 ```

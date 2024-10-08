@@ -27,7 +27,7 @@
 const atob = require('atob');
 const Csrf = require('csrf');
 const queryString = require('query-string');
-const popsicle = require('popsicle');
+const axios = require('axios');
 const os = require('os');
 const winston = require('winston');
 const path = require('path');
@@ -170,7 +170,7 @@ OAuthClient.prototype.createToken = function createToken(uri) {
 
     const request = {
       url: OAuthClient.tokenEndpoint,
-      body,
+      data: body,
       method: 'POST',
       headers: {
         Authorization: `Basic ${this.authHeader()}`,
@@ -184,9 +184,9 @@ OAuthClient.prototype.createToken = function createToken(uri) {
   })
     .then((res) => {
       const authResponse = res.json ? res : null;
-      const json = (authResponse && authResponse.getJson()) || res;
+      const json = (authResponse && authResponse.json) || res;
       this.token.setToken(json);
-      this.log('info', 'Create Token response is : ', JSON.stringify(authResponse, null, 2));
+      this.log('info', 'Create Token response is : ', JSON.stringify(authResponse.json, null, 2));
       return authResponse;
     })
     .catch((e) => {
@@ -211,7 +211,7 @@ OAuthClient.prototype.refresh = function refresh() {
 
     const request = {
       url: OAuthClient.tokenEndpoint,
-      body,
+      data: body,
       method: 'POST',
       headers: {
         Authorization: `Basic ${this.authHeader()}`,
@@ -225,9 +225,9 @@ OAuthClient.prototype.refresh = function refresh() {
   })
     .then((res) => {
       const authResponse = res.json ? res : null;
-      const json = (authResponse && authResponse.getJson()) || res;
+      const json = (authResponse && authResponse.json) || res;
       this.token.setToken(json);
-      this.log('info', 'Refresh Token () response is : ', JSON.stringify(authResponse, null, 2));
+      this.log('info', 'Refresh Token () response is : ', JSON.stringify(authResponse.json, null, 2));
       return authResponse;
     })
     .catch((e) => {
@@ -253,7 +253,7 @@ OAuthClient.prototype.refreshUsingToken = function refreshUsingToken(refresh_tok
 
     const request = {
       url: OAuthClient.tokenEndpoint,
-      body,
+      data: body,
       method: 'POST',
       headers: {
         Authorization: `Basic ${this.authHeader()}`,
@@ -267,12 +267,12 @@ OAuthClient.prototype.refreshUsingToken = function refreshUsingToken(refresh_tok
   })
     .then((res) => {
       const authResponse = res.json ? res : null;
-      const json = (authResponse && authResponse.getJson()) || res;
+      const json = (authResponse && authResponse.json) || res;
       this.token.setToken(json);
       this.log(
         'info',
         'Refresh usingToken () response is : ',
-        JSON.stringify(authResponse, null, 2),
+        JSON.stringify(authResponse.json, null, 2),
       );
       return authResponse;
     })
@@ -304,7 +304,7 @@ OAuthClient.prototype.revoke = function revoke(params) {
 
     const request = {
       url: OAuthClient.revokeEndpoint,
-      body,
+      data: body,
       method: 'POST',
       headers: {
         Authorization: `Basic ${this.authHeader()}`,
@@ -316,9 +316,10 @@ OAuthClient.prototype.revoke = function revoke(params) {
 
     resolve(this.getTokenRequest(request));
   })
-    .then((authResponse) => {
+    .then((res) => {
+      const authResponse = res.json ? res : null;
       this.token.clearToken();
-      this.log('info', 'Revoke Token () response is : ', JSON.stringify(authResponse, null, 2));
+      this.log('info', 'Revoke Token () response is : ', JSON.stringify(authResponse.json, null, 2));
       return authResponse;
     })
     .catch((e) => {
@@ -354,7 +355,7 @@ OAuthClient.prototype.getUserInfo = function getUserInfo() {
       this.log(
         'info',
         'The Get User Info () response is : ',
-        JSON.stringify(authResponse, null, 2),
+        JSON.stringify(authResponse.json, null, 2),
       );
       return authResponse;
     })
@@ -366,46 +367,45 @@ OAuthClient.prototype.getUserInfo = function getUserInfo() {
 
 /**
  * Make API call. Pass the url,method,headers using `params` object
- * *
- * @param {Object} params
+ *
+ * @param {params} params
+ * @param {string} params.url
+ * @param {string} params.method (optional) default is GET
+ * @param {Object} params.headers (optional)
+ * @param {Object} params.body (optional)
+ * @param {string} params.responseType (optional) default is json - options are json, text, stream, arraybuffer
  * @returns {Promise}
  */
 OAuthClient.prototype.makeApiCall = function makeApiCall(params) {
   return new Promise((resolve) => {
     params = params || {};
+    const responseType = params.responseType ? params.responseType : 'json';
+
+    const baseHeaders = {
+      Authorization: `Bearer ${this.getToken().access_token}`,
+      Accept: AuthResponse._jsonContentType,
+      'User-Agent': OAuthClient.user_agent,
+    };
 
     const headers =
       params.headers && typeof params.headers === 'object'
-        ? Object.assign(
-            {},
-            {
-              Authorization: `Bearer ${this.getToken().access_token}`,
-              Accept: AuthResponse._jsonContentType,
-              'User-Agent': OAuthClient.user_agent,
-            },
-            params.headers,
-          )
-        : Object.assign(
-            {},
-            {
-              Authorization: `Bearer ${this.getToken().access_token}`,
-              Accept: AuthResponse._jsonContentType,
-              'User-Agent': OAuthClient.user_agent,
-            },
-          );
+        ? Object.assign({}, baseHeaders, params.headers)
+        : Object.assign({}, baseHeaders);
 
     const request = {
       url: params.url,
       method: params.method || 'GET',
       headers,
+      responseType,
     };
 
-    params.body && (request.body = params.body);
+    params.body && (request.data = params.body);
 
     resolve(this.getTokenRequest(request));
   })
-    .then((authResponse) => {
-      this.log('info', 'The makeAPICall () response is : ', JSON.stringify(authResponse, null, 2));
+    .then((res) => {
+      const authResponse = res.json ? res : null;
+      this.log('info', 'The makeAPICall () response is : ', JSON.stringify(authResponse.json, null, 2));
       return authResponse;
     })
     .catch((e) => {
@@ -546,12 +546,12 @@ OAuthClient.prototype.validateToken = function validateToken() {
 };
 
 /**
- * Make HTTP Request using Popsicle Client
+ * Make HTTP Request using Axios Client
  * @param request
  * @returns response
  */
 OAuthClient.prototype.loadResponse = function loadResponse(request) {
-  return popsicle.get(request).then((response) => response);
+  return axios(request).then((response) => response);
 };
 
 /**
@@ -560,7 +560,7 @@ OAuthClient.prototype.loadResponse = function loadResponse(request) {
  * @returns response
  */
 OAuthClient.prototype.loadResponseFromJWKsURI = function loadResponseFromJWKsURI(request) {
-  return popsicle.get(request).then((response) => response);
+  return axios.get(request).then((response) => response);
 };
 
 /**
